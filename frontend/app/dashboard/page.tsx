@@ -18,6 +18,7 @@ type DashboardData = {
   recommendations:Array<{id:number;name:string;difficulty:string}>;
 };
 type User = {full_name:string;email:string;credits_balance:number;daily_streak:number};
+type NotificationItem = {id:string;kind:"reminder"|"course"|"progress";title:string;message:string;time:string;action?:string;href?:string};
 
 const activityIcon:Record<string,string>={lesson_completed:"✓",roadmap_progress:"★",credits_earned:"✦",login:"↗",course_enrolled:"⌁",certificate_generated:"◇"};
 
@@ -28,6 +29,9 @@ export default function Dashboard() {
   const [levels,setLevels]=useState<Level[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
+  const [notificationsOpen,setNotificationsOpen]=useState(false);
+  const [readNotifications,setReadNotifications]=useState<string[]>([]);
+  const [remindersEnabled,setRemindersEnabled]=useState(true);
 
   const load=useCallback(async()=>{
     if(!getToken()){router.replace("/auth");return;}
@@ -45,6 +49,12 @@ export default function Dashboard() {
   },[router]);
 
   useEffect(()=>{load()},[load]);
+  useEffect(()=>{
+    try{
+      setReadNotifications(JSON.parse(localStorage.getItem("lumio_read_notifications")??"[]"));
+      setRemindersEnabled(localStorage.getItem("lumio_reminders_enabled")!=="false");
+    }catch{/* Keep safe defaults when device storage is unavailable. */}
+  },[]);
 
   function openLevel(level:Level){
     if(level.status==="locked")return;
@@ -60,6 +70,23 @@ export default function Dashboard() {
   const active=levels.find(level=>level.status==="unlocked"||level.status==="in_progress");
   const overall=levels.length?Math.round((completed/levels.length)*100):0;
   const firstName=user?.full_name?.split(" ")[0]??"Learner";
+  const notifications:NotificationItem[]=[
+    ...(active&&dashboard.currentCourse?[{id:`continue-${active.id}`,kind:"reminder" as const,title:"Your next lesson is ready",message:`Continue ${active.title} in ${dashboard.currentCourse.name}. A little progress today keeps your streak alive.`,time:"Today",action:"Continue",href:active.next_lesson_id?`/learn/${active.next_lesson_id}`:"/roadmap"}]:[]),
+    {id:"new-streams",kind:"course",title:"New learning paths added",message:"Explore MBBS, MBA, BTech, BiPC, law, commerce, humanities, and competitive-exam pathways.",time:"New",action:"Explore courses",href:"/courses"},
+    {id:"weekly-goal",kind:"progress",title:"Weekly learning reminder",message:remindersEnabled?"We’ll remind you to complete one module this week.":"Learning reminders are currently paused.",time:"This week"}
+  ];
+  const unreadCount=notifications.filter(item=>!readNotifications.includes(item.id)).length;
+  function markRead(id:string){
+    const next=Array.from(new Set([...readNotifications,id]));
+    setReadNotifications(next);localStorage.setItem("lumio_read_notifications",JSON.stringify(next));
+  }
+  function markAllRead(){
+    const next=notifications.map(item=>item.id);
+    setReadNotifications(next);localStorage.setItem("lumio_read_notifications",JSON.stringify(next));
+  }
+  function toggleReminders(){
+    const next=!remindersEnabled;setRemindersEnabled(next);localStorage.setItem("lumio_reminders_enabled",String(next));
+  }
 
   return <main className="dash-shell">
     <aside className="sidebar">
@@ -71,6 +98,17 @@ export default function Dashboard() {
     <section className="dash-main" id="overview">
       <header className="dash-top"><div><small>YOUR PERSONAL LEARNING SPACE</small><h1>Welcome back, {firstName} <span>👋</span></h1><p>Lumi saved your progress. Continue from exactly where you stopped.</p></div><div className="top-actions"><button aria-label="Notifications">♧<b/></button><div className="credit-pill">✦ <span>{dashboard.summary.credits??0}</span> credits</div></div></header>
       {error&&<div className="dash-alert">{error}<button onClick={()=>setError("")}>×</button></div>}
+      <button className="notification-floating" aria-label={`Notifications, ${unreadCount} unread`} aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(value=>!value)}>♧{unreadCount>0&&<b>{unreadCount}</b>}</button>
+      {notificationsOpen&&<div className="notification-panel" role="dialog" aria-label="Notifications">
+        <div className="notification-head"><div><small>LEARNING UPDATES</small><h2>Notifications</h2></div><button onClick={markAllRead} disabled={!unreadCount}>Mark all read</button></div>
+        <div className="reminder-setting"><span>⏰</span><div><b>Weekly study reminders</b><small>Get a gentle nudge to maintain your progress.</small></div><button className={remindersEnabled?"on":""} role="switch" aria-checked={remindersEnabled} onClick={toggleReminders}><i/></button></div>
+        <div className="notification-list">{notifications.map(item=><article className={readNotifications.includes(item.id)?"read":""} key={item.id} onClick={()=>markRead(item.id)}>
+          <span className={`notification-icon ${item.kind}`}>{item.kind==="reminder"?"⌁":item.kind==="course"?"✦":"★"}</span>
+          <div><div className="notification-title"><b>{item.title}</b><small>{item.time}</small></div><p>{item.message}</p>{item.href&&<Link href={item.href} onClick={()=>markRead(item.id)}>{item.action} →</Link>}</div>
+          {!readNotifications.includes(item.id)&&<i className="unread-dot"/>}
+        </article>)}</div>
+        <div className="notification-foot">Updates are personalized from your courses and progress.</div>
+      </div>}
       <div className="stats-grid">
         <article><span className="stat-icon violet">⌁</span><div><small>CURRENT LEVEL</small><b>{levels.length?`Level ${active?.level_number??levels.length}`:"Choose a path"}</b><em>{dashboard.currentCourse?.name??"All categories available"}</em></div></article>
         <article><span className="stat-icon amber">⚡</span><div><small>LEARNING STREAK</small><b>{dashboard.summary.streak??0} days</b><em className="up">Keep it going!</em></div></article>
