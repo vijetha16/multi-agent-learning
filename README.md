@@ -1,55 +1,142 @@
-# Lumio — Multi-Agent AI Platform for Personalized Learning
+# Lumio — Multi-Agent Personalized Learning Platform
 
-## Team Members
-- VIJETHA
-- NITYA
-- SHRESHTA
-- VARSHA
-- ALTHAF
+Lumio turns a learning objective into a personalized learning experience and
+tracks the learner through game-like roadmaps, quizzes, credits, badges, and
+certification.
 
-## Problem Statement
-Multi-Agent AI Platform for Personalized
-Learning
-Background
-Educational content creation is a multidisciplinary process involving curriculum
-design, research, instructional planning, assessment design, visual communication,
-storytelling, and learner engagement. Today, these tasks are often performed independently using 
-multiple disconnected tools, requiring significant manual effort
-from educators and instructional designers.
-Recent advances in AI have made it possible for specialized AI agents to perform
-individual tasks effectively. However, creating a complete learning experience
-requires these agents to collaborate, exchange information, adapt to learner needs,
-and work toward a common educational objective.
-Challenge
-Design a multi-agent AI platform that enables specialized AI agents to collaboratively
-generate complete, personalized learning experiences from a single user prompt.
-Given a learning objective, topic, or educational challenge, the platform should
-dynamically identify, create, and orchestrate the AI agents required to accomplish
-the task. Rather than relying on fixed workflows, the system should intelligently
-determine which specialist agents are needed and coordinate their execution.
+## Architecture
 
-## About
-Lumio turns a single learning objective into a complete, personalized learning
-experience. An orchestrator dynamically assembles specialist AI agents for
-curriculum planning, research, storytelling, visual communication, and
-assessment—then coordinates their work toward one shared educational goal.
+```text
+frontend/  Next.js + React + TypeScript + Vinext
+backend/   Express + TypeScript REST API
+MySQL 8+   Durable application data and progress history
+```
 
-## Current MVP
-- Prompt-first learning experience builder
-- Dynamic specialist-agent visualization
-- Personalized lesson blueprint preview
-- Responsive, accessible landing experience
-- Interactive sample generation flow
+The public landing page remains at `/`. The application dashboard and vertical
+learning roadmap are available at `/dashboard`.
 
-## Tech Stack
-- Next.js and React
-- TypeScript
-- Tailwind CSS
-- Vinext / Cloudflare-ready build
+## Quick start
 
-## Run locally
+### 1. Create the database
+
+Run these files in order using MySQL 8 or newer:
+
+```sql
+SOURCE backend/database/schema.sql;
+SOURCE backend/database/seed.sql;
+```
+
+### 2. Start the API
+
+```bash
+cd backend
+cp .env.example .env
+# Add your MySQL password and a long JWT secret to .env
+pnpm install
+pnpm dev
+```
+
+The API starts at `http://localhost:4000/api/v1`.
+
+### 3. Start the website
+
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
+```
+
+The website starts at `http://localhost:3000`.
+
+## MySQL tables
+
+| Area | Tables |
+|---|---|
+| Identity | `users`, `user_profiles`, `refresh_tokens` |
+| Personalization | `interests`, `user_interests`, `skills`, `user_skills` |
+| Learning content | `courses`, `course_levels`, `lessons`, `quizzes`, `quiz_questions`, `quiz_options` |
+| Progress | `course_enrollments`, `user_level_progress`, `user_lesson_progress`, `quiz_attempts` |
+| Rewards | `credit_transactions`, `badges`, `user_badges` |
+| Outcomes | `certificates` |
+| Audit history | `user_activities` |
+
+All progress tables use unique user/content constraints to prevent duplicate
+records. Foreign keys maintain referential integrity. Activity, credit, and
+quiz history are append-only.
+
+## REST API
+
+All protected routes require `Authorization: Bearer <token>`.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/auth/register` | Create a learner and profile |
+| `POST` | `/api/v1/auth/login` | Sign in and award daily credits safely |
+| `POST` | `/api/v1/auth/logout` | Record logout activity |
+| `GET` | `/api/v1/auth/me` | Get the signed-in user |
+| `PATCH` | `/api/v1/profile` | Update profile and learning interests |
+| `GET` | `/api/v1/courses` | List available and unlockable courses |
+| `POST` | `/api/v1/courses/:courseId/enroll` | Unlock and enroll in a course |
+| `GET` | `/api/v1/roadmap/:courseId` | Get saved roadmap state |
+| `GET` | `/api/v1/lessons/:lessonId` | Get a lesson and user progress |
+| `POST` | `/api/v1/lessons/:lessonId/start` | Start or resume a lesson |
+| `POST` | `/api/v1/lessons/:lessonId/complete` | Complete lesson and update roadmap |
+| `POST` | `/api/v1/quizzes/:quizId/attempts` | Save quiz result and rewards |
+| `GET` | `/api/v1/credits` | Get balance and immutable history |
+| `GET` | `/api/v1/activities` | Get learner activity history |
+| `GET` | `/api/v1/certificates` | Get eligibility and issued certificates |
+| `POST` | `/api/v1/certificates/:courseId/generate` | Issue eligible certificate |
+| `GET` | `/api/v1/recommendations` | Recommend interest-matched courses |
+| `GET` | `/api/v1/dashboard` | Get dashboard summary |
+| `GET` | `/api/v1/admin/users` | View learners and progress |
+| `GET` | `/api/v1/admin/analytics` | View platform analytics |
+| `POST` | `/api/v1/admin/courses` | Create course |
+| `PUT` | `/api/v1/admin/courses/:id` | Edit course |
+| `DELETE` | `/api/v1/admin/courses/:id` | Delete course |
+| `POST` | `/api/v1/admin/courses/:courseId/levels` | Add roadmap level |
+| `POST` | `/api/v1/admin/credits/adjust` | Apply audited credit adjustment |
+
+## Roadmap progression
+
+1. Enrollment creates an unlocked progress record for level 1.
+2. Starting and completing lessons updates `user_lesson_progress`.
+3. The API recalculates the containing level inside one MySQL transaction.
+4. When every lesson is complete, the level receives three stars and its
+   credit reward is recorded.
+5. The next level is automatically unlocked.
+6. Completing the final level completes the enrollment and awards the
+   course-completion bonus.
+
+The unique progress keys make completion requests idempotent. Reloading or
+logging in on another device restores the same roadmap state from MySQL.
+
+## Credit rules
+
+| Event | Default reward |
+|---|---:|
+| Daily login | 5 |
+| Lesson completion | Set per lesson |
+| Passed quiz | 15 |
+| Perfect quiz | Set per quiz |
+| Level completion | Set per level |
+| Full course completion | 100 |
+
+Every change is stored in `credit_transactions` with a unique idempotency key.
+The cached balance in `user_profiles` is updated in the same database
+transaction, so balance and history cannot drift.
+
+## Certificate eligibility
+
+A learner becomes eligible only after the course enrollment reaches
+`completed`, which occurs when every roadmap level is complete. Generation
+creates a unique certificate number and stores the company, certificate name,
+status, and issue date in MySQL.
+
+## Verification
+
+Both production builds pass:
+
+```bash
+cd backend && pnpm build
+cd frontend && pnpm build
 ```
