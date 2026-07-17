@@ -1,0 +1,3 @@
+"use client";
+import { useState } from "react";import type { TutorAnswer } from "../types";
+export default function PracticeQuizPanel({quiz}:Readonly<{quiz:NonNullable<TutorAnswer["quiz"]>}>){const[answers,setAnswers]=useState<Record<number,number>>({});return <div className="quiz-list">{quiz.map((item,index)=><article key={item.question}><b>{index+1}. {item.question}</b><div>{item.options.map((option,optionIndex)=><button className={answers[index]===optionIndex?(optionIndex===item.correctAnswerIndex?"correct":"wrong"):""} onClick={()=>setAnswers({...answers,[index]:optionIndex})} key={option}>{option}</button>)}</div>{answers[index]!==undefined&&<p>{answers[index]===item.correctAnswerIndex?"Correct — ":"Not quite — "}{item.explanation}</p>}</article>)}</div>}

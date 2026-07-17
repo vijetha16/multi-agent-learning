@@ -81,4 +81,15 @@ router.get("/study-plans",asyncRoute(async(request,response)=>{
   response.json(await rows<RowDataPacket[]>("SELECT * FROM study_plans WHERE user_id=? ORDER BY created_at DESC LIMIT 20",[request.user!.id]));
 }));
 
+router.post("/study-hub/save",asyncRoute(async(request,response)=>{
+  const input=z.object({title:z.string().min(1).max(200),content:z.string().min(1).max(30000),kind:z.enum(["explanation","summary","formula","example","code","quiz","visual"]),topic:z.string().min(1).max(200)}).parse(request.body);
+  const result=await execute("INSERT INTO user_activities (user_id,activity_type,description,metadata_json,ip_address) VALUES (?,?,?,?,?) RETURNING id",[request.user!.id,"study_hub_saved",`Saved ${input.kind}: ${input.title}`,JSON.stringify(input),request.ip??null]);
+  response.status(201).json({id:result.insertId,saved:true});
+}));
+
+router.get("/study-hub/saved",asyncRoute(async(request,response)=>{
+  const data=await rows<RowDataPacket[]>("SELECT id,metadata_json,created_at FROM user_activities WHERE user_id=? AND activity_type='study_hub_saved' ORDER BY created_at DESC LIMIT 30",[request.user!.id]);
+  response.json(data.map(item=>({...item,...(typeof item.metadata_json==="string"?JSON.parse(item.metadata_json):item.metadata_json),metadata_json:undefined})));
+}));
+
 export default router;
