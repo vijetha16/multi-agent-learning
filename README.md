@@ -16,6 +16,13 @@ The public landing page remains at `/`. Account creation is available at
 `/auth`, and the authenticated dashboard and vertical learning roadmap are
 available at `/dashboard`.
 
+Application routes:
+
+- `/courses` — personalized course catalog and credit-based unlocking
+- `/learn/:lessonId` — lesson content, focus timer, teach-back lab, and quiz
+- `/certificates` — live eligibility progress and certificate generation
+- `/achievements` — evidence-based badge gallery
+
 ## Quick start
 
 ### 1. Create the database
@@ -113,12 +120,25 @@ logging in on another device restores the same roadmap state from MySQL.
 Locked lessons are also rejected by the API, so a user cannot bypass the
 roadmap sequence by calling an endpoint directly.
 
+Roadmap nodes never complete content directly. An active node opens the lesson
+player, and completion is available only after the required knowledge check.
+The next roadmap level is created as `unlocked` only inside the same transaction
+that completes the previous level.
+
 ## Learning guide
 
 Lumi is the original AI learning-guide character used across account onboarding,
 loading states, personalized tips, and the active roadmap mission. The dashboard
 adapts from desktop navigation to a compact mobile layout while preserving clear
 locked, active, and completed level states.
+
+Distinctive learning features include:
+
+- **Teach-back Lab:** learners explain the concept in plain language.
+- **Focus Timer:** tracks an intentional learning session in the lesson player.
+- **PathMatch:** recommendations adapt to interests and completed learning.
+- **Mastery DNA:** achievements summarize evidence across lessons, quizzes,
+  consistency, and complete courses.
 
 ## Credit rules
 

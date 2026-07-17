@@ -121,6 +121,35 @@ router.get("/lessons/:lessonId", asyncRoute(async (request, response) => {
   response.json(lessons[0]);
 }));
 
+router.get("/lessons/:lessonId/quiz", asyncRoute(async (request, response) => {
+  const lessonId=z.coerce.number().int().positive().parse(request.params.lessonId);
+  const quizzes=await rows<RowDataPacket[]>(
+    "SELECT id,title,passing_score FROM quizzes WHERE lesson_id=? LIMIT 1",[lessonId],
+  );
+  if(!quizzes[0]) return response.json(null);
+  const questions=await rows<RowDataPacket[]>(
+    `SELECT q.id,q.prompt,q.explanation,q.position,
+      JSON_ARRAYAGG(JSON_OBJECT('id',o.id,'text',o.option_text,'isCorrect',o.is_correct,'position',o.position)) options
+     FROM quiz_questions q JOIN quiz_options o ON o.question_id=q.id
+     WHERE q.quiz_id=? GROUP BY q.id ORDER BY q.position`,[quizzes[0].id],
+  );
+  response.json({...quizzes[0],questions});
+}));
+
+router.get("/courses/:courseId/outline", asyncRoute(async (request,response)=>{
+  const courseId=z.coerce.number().int().positive().parse(request.params.courseId);
+  response.json(await rows<RowDataPacket[]>(
+    `SELECT cl.id level_id,cl.level_number,cl.title level_title,l.id lesson_id,l.lesson_number,
+      l.title lesson_title,l.estimated_minutes,COALESCE(lp.status,'not_started') lesson_status,
+      COALESCE(ulp.status,IF(cl.level_number=1,'unlocked','locked')) level_status
+     FROM course_levels cl JOIN lessons l ON l.level_id=cl.id
+     LEFT JOIN user_lesson_progress lp ON lp.lesson_id=l.id AND lp.user_id=?
+     LEFT JOIN user_level_progress ulp ON ulp.level_id=cl.id AND ulp.user_id=?
+     WHERE cl.course_id=? ORDER BY cl.level_number,l.lesson_number`,
+    [request.user!.id,request.user!.id,courseId],
+  ));
+}));
+
 router.post("/lessons/:lessonId/start", asyncRoute(async (request, response) => {
   const lessonId = z.coerce.number().int().positive().parse(request.params.lessonId);
   const access = await rows<RowDataPacket[]>(
@@ -179,6 +208,25 @@ router.get("/activities", asyncRoute(async (request, response) => {
     "SELECT * FROM user_activities WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
     [request.user!.id],
   ));
+}));
+
+router.get("/achievements", asyncRoute(async (request,response)=>{
+  const stats=await rows<RowDataPacket[]>(
+    `SELECT p.daily_streak,
+      (SELECT COUNT(*) FROM user_lesson_progress WHERE user_id=? AND status='completed') lessons,
+      (SELECT COUNT(*) FROM quiz_attempts WHERE user_id=? AND score=100) perfect_quizzes,
+      (SELECT COUNT(*) FROM course_enrollments WHERE user_id=? AND status='completed') courses
+     FROM user_profiles p WHERE p.user_id=?`,
+    [request.user!.id,request.user!.id,request.user!.id,request.user!.id],
+  );
+  const s:RowDataPacket=stats[0]??({} as RowDataPacket);
+  response.json([
+    {id:"first-step",name:"First Step",description:"Complete your first lesson",icon:"🚀",unlocked:Number(s.lessons)>=1,progress:Math.min(Number(s.lessons),1),goal:1},
+    {id:"knowledge-seeker",name:"Knowledge Seeker",description:"Complete 5 lessons",icon:"📚",unlocked:Number(s.lessons)>=5,progress:Math.min(Number(s.lessons),5),goal:5},
+    {id:"perfect-score",name:"Perfect Score",description:"Score 100% on a quiz",icon:"🎯",unlocked:Number(s.perfect_quizzes)>=1,progress:Math.min(Number(s.perfect_quizzes),1),goal:1},
+    {id:"week-warrior",name:"Week Warrior",description:"Maintain a 7-day streak",icon:"🔥",unlocked:Number(s.daily_streak)>=7,progress:Math.min(Number(s.daily_streak),7),goal:7},
+    {id:"pathfinder",name:"Pathfinder",description:"Complete your first course",icon:"🏆",unlocked:Number(s.courses)>=1,progress:Math.min(Number(s.courses),1),goal:1},
+  ]);
 }));
 
 router.get("/certificates", asyncRoute(async (request, response) => {

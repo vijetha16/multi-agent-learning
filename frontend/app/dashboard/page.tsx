@@ -27,9 +27,7 @@ export default function Dashboard() {
   const [user,setUser]=useState<User|null>(null);
   const [levels,setLevels]=useState<Level[]>([]);
   const [loading,setLoading]=useState(true);
-  const [action,setAction]=useState(false);
   const [error,setError]=useState("");
-  const [celebrate,setCelebrate]=useState("");
 
   const load=useCallback(async()=>{
     if(!getToken()){router.replace("/auth");return;}
@@ -54,16 +52,9 @@ export default function Dashboard() {
 
   useEffect(()=>{load()},[load]);
 
-  async function completeLevel(level:Level){
-    if(level.status==="locked"||!level.next_lesson_id||action)return;
-    setAction(true);setError("");
-    try{
-      const result=await api<{levelCompleted:boolean;creditsAwarded:boolean}>(`/lessons/${level.next_lesson_id}/complete`,{method:"POST",body:JSON.stringify({timeSpentSeconds:level.estimated_minutes*60})});
-      setCelebrate(result.levelCompleted?`Level ${level.level_number} complete! Next level unlocked.`:"Lesson complete! Progress saved.");
-      window.setTimeout(()=>setCelebrate(""),2400);
-      await load();
-    }catch(reason){setError(reason instanceof Error?reason.message:"Could not update progress")}
-    finally{setAction(false)}
+  function openLevel(level:Level){
+    if(level.status==="locked")return;
+    if(level.next_lesson_id)router.push(`/learn/${level.next_lesson_id}`);
   }
 
   function signOut(){clearSession();router.push("/auth")}
@@ -77,10 +68,9 @@ export default function Dashboard() {
   const firstName=user?.full_name?.split(" ")[0]??"Learner";
 
   return <main className="dash-shell">
-    {celebrate&&<div className="confetti" aria-live="polite">{Array.from({length:34},(_,i)=><i key={i} style={{"--i":i} as React.CSSProperties}/>)}<b>🎉 {celebrate}</b></div>}
     <aside className="sidebar">
       <Link className="dash-brand" href="/"><span>L</span><b>Lumio</b></Link>
-      <nav><a className="selected" href="#overview"><i>⌂</i> Overview</a><a href="#roadmap"><i>⌁</i> My Roadmap</a><a href="#courses"><i>◫</i> Explore Courses</a><a href="#certificates"><i>◇</i> Certificates</a><a href="#achievements"><i>☆</i> Achievements</a></nav>
+      <nav><Link className="selected" href="/dashboard"><i>⌂</i> Overview</Link><a href="#roadmap"><i>⌁</i> My Roadmap</a><Link href="/courses"><i>◫</i> Explore Courses</Link><Link href="/certificates"><i>◇</i> Certificates</Link><Link href="/achievements"><i>☆</i> Achievements</Link></nav>
       <div className="sidebar-bottom"><a href="#settings"><i>⚙</i> Settings</a><button className="signout" onClick={signOut}>↙ Sign out</button><div className="user-chip"><span>{firstName[0]}</span><div><b>{user?.full_name}</b><small>Level {active?.level_number??completed} learner</small></div></div></div>
     </aside>
 
@@ -102,9 +92,9 @@ export default function Dashboard() {
           <div className="roadmap"><div className="path-line"/>
             {levels.map((level,index)=><article id={`level-${level.id}`} className={`road-level ${level.status==="completed"?"done":level.status==="locked"?"locked":"active"} ${index%2?"right":"left"}`} key={level.id}>
               <div className="level-info"><small>LEVEL {level.level_number}</small><h3>{level.title}</h3><p>◷ {level.estimated_minutes} min <span>✦ {level.credits_reward} credits</span></p>{level.status==="in_progress"&&<div className="mini-progress"><i style={{width:`${level.completion_percent}%`}}/><b>{level.completion_percent}%</b></div>}{level.status==="locked"&&<em className="lock-note">Complete level {level.level_number-1} to unlock</em>}</div>
-              <button className="level-node" disabled={level.status==="locked"||level.status==="completed"||action} onClick={()=>completeLevel(level)} aria-label={`${level.title}: ${level.status}`}>
+              <button className="level-node" disabled={level.status==="locked"||level.status==="completed"} onClick={()=>openLevel(level)} aria-label={`${level.title}: ${level.status}`}>
                 {level.status==="completed"?"✓":level.status==="locked"?"🔒":level.level_number}
-                {(level.status==="unlocked"||level.status==="in_progress")&&<span>{action?"SAVING…":"START"}</span>}
+                {(level.status==="unlocked"||level.status==="in_progress")&&<span>PLAY</span>}
               </button>
               <div className="stars">{[1,2,3].map(star=><i className={star<=level.stars?"filled":""} key={star}>★</i>)}</div>
             </article>)}
@@ -112,9 +102,9 @@ export default function Dashboard() {
           </div>
         </div>
         <aside className="right-rail">
-          <article className="continue-card"><small>CURRENT MISSION</small><span className="lesson-art"><img src="/lumi-guide.png" alt="Lumi"/></span><h3>{active?.title??"Roadmap complete"}</h3><p>{active?`Level ${active.level_number} • ${active.estimated_minutes} minutes`:"You mastered every level."}</p><div className="rail-progress"><i style={{width:`${active?.completion_percent??100}%`}}/></div><button disabled={!active||action} onClick={()=>active&&completeLevel(active)}>{action?"Saving progress…":active?"Complete current lesson":"All levels complete"} <span>→</span></button></article>
+          <article className="continue-card"><small>CURRENT MISSION</small><span className="lesson-art"><img src="/lumi-guide.png" alt="Lumi"/></span><h3>{active?.title??"Roadmap complete"}</h3><p>{active?`Level ${active.level_number} • ${active.estimated_minutes} minutes`:"You mastered every level."}</p><div className="rail-progress"><i style={{width:`${active?.completion_percent??100}%`}}/></div><button disabled={!active} onClick={()=>active&&openLevel(active)}>{active?"Enter current lesson":"All levels complete"} <span>→</span></button></article>
           <article className="activity-card"><div className="rail-title"><h3>Recent activity</h3><button>Live history</button></div>{dashboard.recentActivity.length?dashboard.recentActivity.map(item=><div className="activity-row" key={item.id}><span>{activityIcon[item.activity_type]??"•"}</span><div><b>{item.description}</b><small>{new Date(item.created_at).toLocaleDateString()}</small></div></div>):<p className="empty-state">Complete your first lesson and your activity will appear here.</p>}</article>
-          <article className="unlock-card"><span>✦</span><div><small>PERSONALIZED FOR YOU</small><b>{dashboard.recommendations[0]?.name??"More paths coming soon"}</b><p>Recommendations follow your selected interests.</p></div><button>Explore learning paths</button></article>
+          <article className="unlock-card"><span>✦</span><div><small>PERSONALIZED FOR YOU</small><b>{dashboard.recommendations[0]?.name??"More paths coming soon"}</b><p>Recommendations follow your selected interests.</p></div><button onClick={()=>router.push("/courses")}>Explore learning paths</button></article>
         </aside>
       </div>
     </section>
