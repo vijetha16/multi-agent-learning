@@ -26,7 +26,15 @@ test("renders the learning dashboard and roadmap", async () => {
   const response = await render("/dashboard");
   assert.equal(response.status, 200);
   const html = await response.text();
+  assert.match(html, /Lumi is preparing your learning path/);
+  assert.match(html, /lumi-guide\.png/);
+});
+
+test("renders account sign in and registration", async () => {
+  const response = await render("/auth");
+  assert.equal(response.status, 200);
+  const html = await response.text();
   assert.match(html, /Welcome back/);
-  assert.match(html, /AI &amp; Machine Learning/);
-  assert.match(html, /Industry Certificate/);
+  assert.match(html, /Create account/);
+  assert.match(html, /Every path begins with curiosity/);
 });

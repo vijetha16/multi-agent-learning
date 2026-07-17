@@ -12,8 +12,9 @@ backend/   Express + TypeScript REST API
 MySQL 8+   Durable application data and progress history
 ```
 
-The public landing page remains at `/`. The application dashboard and vertical
-learning roadmap are available at `/dashboard`.
+The public landing page remains at `/`. Account creation is available at
+`/auth`, and the authenticated dashboard and vertical learning roadmap are
+available at `/dashboard`.
 
 ## Quick start
 
@@ -109,6 +110,15 @@ All protected routes require `Authorization: Bearer <token>`.
 
 The unique progress keys make completion requests idempotent. Reloading or
 logging in on another device restores the same roadmap state from MySQL.
+Locked lessons are also rejected by the API, so a user cannot bypass the
+roadmap sequence by calling an endpoint directly.
+
+## Learning guide
+
+Lumi is the original AI learning-guide character used across account onboarding,
+loading states, personalized tips, and the active roadmap mission. The dashboard
+adapts from desktop navigation to a compact mobile layout while preserving clear
+locked, active, and completed level states.
 
 ## Credit rules
 

@@ -8,13 +8,18 @@ export async function completeLesson(userId: number, lessonId: number, timeSpent
   return transaction(async (connection) => {
     const [lessons] = await connection.execute<RowDataPacket[]>(
       `SELECT l.id, l.title, l.level_id, l.credits_reward, cl.course_id, cl.level_number,
-              cl.credits_reward AS level_credits
+              cl.credits_reward AS level_credits,
+              COALESCE(ulp.status,IF(cl.level_number=1,'unlocked','locked')) AS level_status
        FROM lessons l JOIN course_levels cl ON cl.id = l.level_id
+       LEFT JOIN user_level_progress ulp ON ulp.level_id=cl.id AND ulp.user_id=?
        WHERE l.id = ? FOR UPDATE`,
-      [lessonId],
+      [userId, lessonId],
     );
     const lesson = lessons[0];
     if (!lesson) throw new ApiError(404, "Lesson not found");
+    if (lesson.level_status === "locked") {
+      throw new ApiError(423, "Complete the current level before completing this lesson");
+    }
 
     const [progress] = await connection.execute<RowDataPacket[]>(
       "SELECT status FROM user_lesson_progress WHERE user_id = ? AND lesson_id = ? FOR UPDATE",

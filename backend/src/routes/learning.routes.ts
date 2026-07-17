@@ -92,14 +92,18 @@ router.get("/roadmap/:courseId", asyncRoute(async (request, response) => {
     `SELECT cl.id,cl.level_number,cl.title,cl.description,cl.xp_reward,cl.credits_reward,
       COALESCE(ulp.status, IF(cl.level_number=1,'unlocked','locked')) status,
       COALESCE(ulp.completion_percent,0) completion_percent,COALESCE(ulp.stars,0) stars,
-      COUNT(l.id) lesson_count,COALESCE(SUM(l.estimated_minutes),0) estimated_minutes
+      COUNT(l.id) lesson_count,COALESCE(SUM(l.estimated_minutes),0) estimated_minutes,
+      (SELECT l2.id FROM lessons l2
+       LEFT JOIN user_lesson_progress lp2 ON lp2.lesson_id=l2.id AND lp2.user_id=?
+       WHERE l2.level_id=cl.id AND COALESCE(lp2.status,'not_started')<>'completed'
+       ORDER BY l2.lesson_number LIMIT 1) next_lesson_id
      FROM course_levels cl
      LEFT JOIN lessons l ON l.level_id=cl.id
      LEFT JOIN user_level_progress ulp ON ulp.level_id=cl.id AND ulp.user_id=?
      WHERE cl.course_id=?
      GROUP BY cl.id,ulp.status,ulp.completion_percent,ulp.stars
      ORDER BY cl.level_number`,
-    [request.user!.id, courseId],
+    [request.user!.id, request.user!.id, courseId],
   );
   response.json(levels);
 }));
@@ -119,6 +123,14 @@ router.get("/lessons/:lessonId", asyncRoute(async (request, response) => {
 
 router.post("/lessons/:lessonId/start", asyncRoute(async (request, response) => {
   const lessonId = z.coerce.number().int().positive().parse(request.params.lessonId);
+  const access = await rows<RowDataPacket[]>(
+    `SELECT cl.level_number,COALESCE(ulp.status,IF(cl.level_number=1,'unlocked','locked')) level_status
+     FROM lessons l JOIN course_levels cl ON cl.id=l.level_id
+     LEFT JOIN user_level_progress ulp ON ulp.level_id=cl.id AND ulp.user_id=?
+     WHERE l.id=?`, [request.user!.id,lessonId],
+  );
+  if (!access[0]) throw new ApiError(404,"Lesson not found");
+  if (access[0].level_status === "locked") throw new ApiError(423,"Complete the current level before starting this lesson");
   await execute(
     `INSERT INTO user_lesson_progress (user_id,lesson_id,status,started_at)
      VALUES (?,?,'in_progress',NOW())

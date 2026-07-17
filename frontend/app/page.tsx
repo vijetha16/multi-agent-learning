@@ -43,7 +43,7 @@ export default function Home() {
           <a href="#agents">Agents</a>
           <a href="#demo">Demo</a>
         </div>
-        <a className="nav-cta" href="/dashboard">Open dashboard <span>↗</span></a>
+        <a className="nav-cta" href="/auth">Start learning <span>↗</span></a>
       </nav>
 
       <section className="hero">
