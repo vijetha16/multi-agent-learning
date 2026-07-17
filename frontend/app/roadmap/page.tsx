@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import PortalNav from "../components/PortalNav";
 import { api,getToken } from "../lib/api";
 import "./roadmap.css";
+import "./roadmap-refinements.css";
 
 type Level={id:number;level_number:number;title:string;description:string;credits_reward:number;status:"locked"|"unlocked"|"in_progress"|"completed";estimated_minutes:number;next_lesson_id:number|null};
 type Dashboard={currentCourse:{id:number;name:string}|null};

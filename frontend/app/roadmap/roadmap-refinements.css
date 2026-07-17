@@ -1,0 +1,37 @@
+/* Final overrides for the game path. Kept separate because the original roadmap styles are compacted. */
+.roadmap-only{overflow:hidden}
+.map-stop{grid-template-columns:minmax(0,1fr) 112px minmax(0,1fr);min-height:250px}
+.map-stop .map-card{min-width:0}
+.lumi-marker{bottom:96px;pointer-events:none}
+
+@media(max-width:900px){
+  .roadmap-only{margin-left:230px;padding:32px 20px 90px}
+  .roadmap-header{align-items:stretch;flex-direction:column}
+  .map-progress{min-width:0}
+  .game-map{margin-top:35px}
+  .map-trail{left:44px}
+  .map-stop,.map-stop.right{grid-template-columns:88px minmax(0,1fr);min-height:260px}
+  .map-stop .map-card,.map-stop.right .map-card{grid-column:2;grid-row:1;text-align:left}
+  .map-node-wrap{grid-column:1}
+  .map-node{width:72px;height:72px;border-width:7px;font-size:22px}
+  .lumi-marker{display:grid;width:80px;bottom:82px}
+  .lumi-marker img{width:60px}
+  .module-meta{flex-wrap:wrap}
+  .finish-goal{margin-left:0}
+}
+
+@media(max-width:700px){
+  .roadmap-only{margin-left:0;padding:28px 15px 100px}
+}
+
+@media(max-width:460px){
+  .map-stop,.map-stop.right{grid-template-columns:68px minmax(0,1fr);gap:7px;min-height:275px}
+  .map-trail{left:34px}
+  .map-node{width:58px;height:58px;border-width:6px;font-size:18px;box-shadow:0 7px 0 #4f2ba0}
+  .map-card{padding:16px!important}
+  .map-card h2{font-size:17px}
+  .lumi-marker{display:grid;width:62px;bottom:68px}
+  .lumi-marker img{width:45px}
+  .lumi-marker b{font-size:6px;padding:4px 6px}
+  .finish-goal{max-width:100%;padding:14px 16px}
+}
