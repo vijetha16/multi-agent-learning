@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit"
+    ,"test": "npm run build && node --test tests/*.test.mjs"
     ,"db:migrate:postgres": "node --env-file=.env --env-file=.env.supabase.local scripts/migrate-catalog-to-postgres.mjs",
     "db:migrate:features": "node --env-file=.env --env-file=.env.supabase.runtime.local scripts/apply-feature-expansion.mjs"
   },

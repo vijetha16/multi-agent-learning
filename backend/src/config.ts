@@ -13,6 +13,8 @@ const environment = z.object({
   MYSQL_PASSWORD: z.string().default(""),
   JWT_SECRET: z.string().min(24).default("development-only-secret-change-me"),
   JWT_EXPIRES_IN: z.string().default("7d"),
+  OPENAI_API_KEY: z.string().min(20).optional(),
+  OPENAI_MODEL: z.string().default("gpt-5.6-sol"),
 }).parse(process.env);
 
 export const config = environment;
