@@ -8,6 +8,9 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import tutorRoutes from "./routes/tutor.routes.js";
 import presentationRoutes from "./routes/presentation.routes.js";
+import docsRoutes from "./routes/docs.routes.js";
+import { requestLogger } from "./logger.js";
+import studentRoutes from "./routes/student.routes.js";
 import { errorHandler, notFound } from "./http.js";
 
 export const app = express();
@@ -15,13 +18,16 @@ app.disable("x-powered-by");
 app.use((helmet as unknown as () => express.RequestHandler)());
 app.use(cors({ origin: config.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
+app.use(requestLogger);
 
 app.get("/api/v1/health", (_request, response) => response.json({ status: "ok", service: "lumio-api" }));
+app.use("/api/v1/docs", docsRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1", learningRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/tutor", tutorRoutes);
 app.use("/api/v1/presentations", presentationRoutes);
+app.use("/api/v1/student", studentRoutes);
 app.use(notFound);
 app.use(errorHandler);

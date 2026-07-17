@@ -23,6 +23,21 @@ router.get("/users", asyncRoute(async (_request, response) => {
   ));
 }));
 
+router.patch("/users/:id/status", asyncRoute(async (request, response) => {
+  const id = z.coerce.number().int().positive().parse(request.params.id);
+  const input = z.object({ status:z.enum(["active","suspended","pending"]) }).parse(request.body);
+  if (id === request.user!.id && input.status !== "active") throw new Error("Administrators cannot suspend their own account");
+  await execute("UPDATE users SET account_status=? WHERE id=? AND role<>'admin'", [input.status,id]);
+  response.json({ id, status:input.status });
+}));
+
+router.delete("/users/:id", asyncRoute(async (request, response) => {
+  const id = z.coerce.number().int().positive().parse(request.params.id);
+  if (id === request.user!.id) throw new Error("Administrators cannot delete their own account");
+  await execute("UPDATE users SET account_status='deleted',email=CONCAT('deleted+',id,'@lumio.invalid'),full_name='Deleted learner' WHERE id=? AND role<>'admin'", [id]);
+  response.status(204).send();
+}));
+
 router.get("/analytics", asyncRoute(async (_request, response) => {
   const metrics = await rows<RowDataPacket[]>(
     `SELECT (SELECT COUNT(*) FROM users WHERE role='learner') users,
