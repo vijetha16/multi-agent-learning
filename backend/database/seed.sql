@@ -1,5 +1,11 @@
 USE lumio_learning;
 
+INSERT INTO interests (name,slug) VALUES
+('BiPC','bipc'),('MBBS & Medicine','mbbs-medicine'),('MBA & Management','mba-management'),
+('BTech & Engineering','btech-engineering'),('Commerce & Finance','commerce-finance'),
+('Law','law'),('Arts & Humanities','arts-humanities'),('Competitive Exams','competitive-exams')
+ON DUPLICATE KEY UPDATE name=VALUES(name);
+
 INSERT INTO interests (name, slug) VALUES
 ('Artificial Intelligence','artificial-intelligence'),('Machine Learning','machine-learning'),
 ('Cyber Security','cyber-security'),('Web Development','web-development'),('Cloud','cloud'),
@@ -158,3 +164,50 @@ SELECT cl.course_id,cl.id,cl.level_number*10+1,
 FROM course_levels cl JOIN courses c ON c.id=cl.course_id
 WHERE c.slug<>'ai-machine-learning'
 ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),notes=VALUES(notes);
+
+INSERT INTO courses
+(name,slug,description,difficulty,duration_minutes,total_levels,credits_required,certificate_company,certificate_name,category_interest_id,is_published) VALUES
+('BiPC Foundation','bipc-foundation','Master biology, physics, and chemistry through connected concepts, diagrams, and exam practice.','beginner',240,3,0,'Lumio Academic Council','BiPC Foundation Certificate',(SELECT id FROM interests WHERE slug='bipc'),TRUE),
+('MBBS Clinical Foundations','mbbs-clinical-foundations','Build anatomy, physiology, pathology, pharmacology, and clinical-reasoning foundations.','intermediate',300,3,120,'Lumio Health Learning','Clinical Foundations Certificate',(SELECT id FROM interests WHERE slug='mbbs-medicine'),TRUE),
+('MBA Business Leadership','mba-business-leadership','Learn strategy, marketing, finance, operations, leadership, and case analysis.','intermediate',260,3,100,'Lumio Business School','Business Leadership Certificate',(SELECT id FROM interests WHERE slug='mba-management'),TRUE),
+('BTech Engineering Core','btech-engineering-core','Strengthen mathematics, programming, systems thinking, design, and engineering projects.','beginner',280,3,0,'Lumio Institute of Engineering','Engineering Core Certificate',(SELECT id FROM interests WHERE slug='btech-engineering'),TRUE),
+('Commerce & Financial Literacy','commerce-financial-literacy','Study accounting, economics, taxation, markets, and practical financial decision-making.','beginner',220,3,0,'Lumio School of Commerce','Commerce & Finance Certificate',(SELECT id FROM interests WHERE slug='commerce-finance'),TRUE),
+('Legal Reasoning & Constitution','legal-reasoning-constitution','Understand constitutional principles, legal reasoning, case reading, and argument construction.','beginner',210,3,80,'Lumio School of Law','Legal Reasoning Certificate',(SELECT id FROM interests WHERE slug='law'),TRUE),
+('Humanities & Social Sciences','humanities-social-sciences','Explore history, society, literature, psychology, critical thinking, and research writing.','beginner',220,3,0,'Lumio Liberal Arts Academy','Humanities Certificate',(SELECT id FROM interests WHERE slug='arts-humanities'),TRUE),
+('Competitive Exam Mastery','competitive-exam-mastery','Build aptitude, reasoning, revision systems, mock-test strategy, and performance analysis.','intermediate',240,3,100,'Lumio Exam Academy','Exam Readiness Certificate',(SELECT id FROM interests WHERE slug='competitive-exams'),TRUE)
+ON DUPLICATE KEY UPDATE description=VALUES(description),is_published=TRUE,total_levels=VALUES(total_levels);
+
+INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward)
+SELECT c.id,n.level_number,
+  CASE n.level_number WHEN 1 THEN 'Module 1 · Foundations' WHEN 2 THEN 'Module 2 · Applied Practice' ELSE 'Module 3 · Final Project & Mastery' END,
+  CASE n.level_number WHEN 1 THEN CONCAT('Build the essential concepts of ',c.name,'.') WHEN 2 THEN 'Apply concepts through cases, problems, and visual learning.' ELSE 'Complete an integrated challenge and final module quiz.' END,
+  n.level_number*150,n.level_number*35
+FROM courses c CROSS JOIN (SELECT 1 level_number UNION ALL SELECT 2 UNION ALL SELECT 3) n
+WHERE c.slug IN ('bipc-foundation','mbbs-clinical-foundations','mba-business-leadership','btech-engineering-core','commerce-financial-literacy','legal-reasoning-constitution','humanities-social-sciences','competitive-exam-mastery')
+ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),credits_reward=VALUES(credits_reward);
+
+INSERT INTO lessons (course_id,level_id,lesson_number,title,description,notes,estimated_minutes,credits_reward)
+SELECT c.id,cl.id,cl.level_number*10+1,CONCAT(cl.title,': ',c.name),cl.description,
+CONCAT('This module combines clear explanations, visual examples, active recall, practice scenarios, and a final knowledge check for ',c.name,'. Complete each learning block before attempting the module quiz.'),
+30,cl.level_number*15
+FROM courses c JOIN course_levels cl ON cl.course_id=c.id
+WHERE c.slug IN ('bipc-foundation','mbbs-clinical-foundations','mba-business-leadership','btech-engineering-core','commerce-financial-literacy','legal-reasoning-constitution','humanities-social-sciences','competitive-exam-mastery')
+ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),notes=VALUES(notes);
+
+INSERT INTO quizzes (lesson_id,title,passing_score,perfect_score_bonus)
+SELECT l.id,CONCAT(l.title,' · Final Module Quiz'),70,10
+FROM lessons l LEFT JOIN quizzes q ON q.lesson_id=l.id WHERE q.id IS NULL;
+
+INSERT INTO quiz_questions (quiz_id,prompt,explanation,position)
+SELECT q.id,'Which approach best demonstrates mastery of this module?',
+'Real mastery combines understanding, application, reflection, and the ability to explain a concept clearly.',1
+FROM quizzes q LEFT JOIN quiz_questions qq ON qq.quiz_id=q.id WHERE qq.id IS NULL;
+
+INSERT INTO quiz_options (question_id,option_text,is_correct,position)
+SELECT qq.id,
+  ELT(p.position,'Memorize words without context','Apply the concept and explain the reasoning','Skip practice and guess','Read the title only'),
+  p.position=2,p.position
+FROM quiz_questions qq
+CROSS JOIN (SELECT 1 position UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) p
+LEFT JOIN quiz_options qo ON qo.question_id=qq.id AND qo.position=p.position
+WHERE qo.id IS NULL;

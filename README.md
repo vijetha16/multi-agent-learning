@@ -183,3 +183,17 @@ cd frontend && pnpm build
   `GET /api/v1/tutor/history` returns recent tutor activity.
 - The catalog and certificate center display the certificate name and issuing
   organization for every course.
+
+## All-stream learning and presentation studio
+
+- The catalog includes 21 learning paths spanning BiPC, MBBS, MBA, BTech,
+  commerce, law, humanities, competitive exams, programming, AI, and more.
+- `/roadmap` is a dedicated distraction-free roadmap. Each level is presented
+  as a module, and the next module stays locked until the current module and
+  final quiz are completed.
+- Every seeded module has a final quiz with a 70% passing requirement. The API
+  enforces this requirement before recording module completion.
+- `/presentations` converts one learner prompt into a complete slide outline
+  and downloads it as a real, editable `.pptx` file.
+- `POST /api/v1/presentations/generate` creates a structured 4–12 slide deck
+  for any academic stream or professional topic.

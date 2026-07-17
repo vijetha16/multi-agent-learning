@@ -180,6 +180,11 @@ router.post("/lessons/:lessonId/start", asyncRoute(async (request, response) => 
 router.post("/lessons/:lessonId/complete", asyncRoute(async (request, response) => {
   const lessonId = z.coerce.number().int().positive().parse(request.params.lessonId);
   const input = z.object({ timeSpentSeconds: z.number().int().nonnegative().default(0) }).parse(request.body);
+  const quizGate=await rows<RowDataPacket[]>(
+    `SELECT q.id,EXISTS(SELECT 1 FROM quiz_attempts qa WHERE qa.quiz_id=q.id AND qa.user_id=? AND qa.passed=TRUE) passed
+     FROM quizzes q WHERE q.lesson_id=? LIMIT 1`,[request.user!.id,lessonId],
+  );
+  if(quizGate[0]&&!quizGate[0].passed) throw new ApiError(409,"Pass the final module quiz before completing this module");
   response.json(await completeLesson(request.user!.id, lessonId, input.timeSpentSeconds));
 }));
 

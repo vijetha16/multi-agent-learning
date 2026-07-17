@@ -64,7 +64,7 @@ export default function Dashboard() {
   return <main className="dash-shell">
     <aside className="sidebar">
       <Link className="dash-brand" href="/"><span>L</span><b>Lumio</b></Link>
-      <nav><Link className="selected" href="/dashboard"><i>⌂</i> Overview</Link><a href="#roadmap"><i>⌁</i> My Roadmap</a><Link href="/courses"><i>◫</i> Explore Courses</Link><Link href="/tutor"><i>✦</i> Ask Lumi</Link><Link href="/certificates"><i>◇</i> Certificates</Link><Link href="/achievements"><i>☆</i> Achievements</Link></nav>
+      <nav><Link className="selected" href="/dashboard"><i>⌂</i> Overview</Link><Link href="/roadmap"><i>⌁</i> My Roadmap</Link><Link href="/courses"><i>◫</i> Explore Courses</Link><Link href="/presentations"><i>▣</i> PPT Creator</Link><Link href="/tutor"><i>✦</i> Ask Lumi</Link><Link href="/certificates"><i>◇</i> Certificates</Link><Link href="/achievements"><i>☆</i> Achievements</Link></nav>
       <div className="sidebar-bottom"><Link href="/profile"><i>◎</i> Edit profile</Link><button className="signout" onClick={signOut}>↙ Sign out</button><div className="user-chip"><span>{firstName[0]}</span><div><b>{user?.full_name}</b><small>Level {active?.level_number??completed} learner</small></div></div></div>
     </aside>
 
@@ -77,6 +77,11 @@ export default function Dashboard() {
         <article><span className="stat-icon green">✓</span><div><small>LESSONS DONE</small><b>{dashboard.summary.completed_lessons??0}</b><em>saved permanently</em></div></article>
         <article><span className="stat-icon blue">♛</span><div><small>LEADERBOARD</small><b>#{dashboard.summary.leaderboard_rank??1}</b><em className="up">By earned credits</em></div></article>
       </div>
+      <section className="stream-overview">
+        <div><small>ONE PLATFORM · EVERY STREAM</small><h2>Learn beyond a single degree or career</h2><p>Build a personal path across BiPC, MBBS, MBA, BTech, commerce, law, humanities, competitive exams, programming, AI, and more.</p></div>
+        <div className="stream-pills">{["BiPC","MBBS","MBA","BTech","Commerce","Law","Humanities","Exams"].map(stream=><span key={stream}>{stream}</span>)}</div>
+        <div className="overview-actions"><Link href="/courses">Explore every stream →</Link><Link href="/presentations">Create a presentation →</Link></div>
+      </section>
 
       <div className="dashboard-grid">
         <div className="roadmap-card" id="roadmap">
