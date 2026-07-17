@@ -24,12 +24,18 @@ export default function AuthPage() {
     try {
       const body=mode==="login"
         ? {email:data.get("email"),password:data.get("password")}
-        : {fullName:data.get("fullName"),email:data.get("email"),password:data.get("password"),experienceLevel:data.get("experienceLevel"),interests:selected};
+        : {fullName:data.get("fullName"),username:data.get("username"),email:data.get("email"),password:data.get("password"),experienceLevel:data.get("experienceLevel"),interests:selected};
       const result=await api<{token:string;user:unknown}>(`/auth/${mode==="login"?"login":"register"}`,{method:"POST",body:JSON.stringify(body)});
       saveSession(result.token,result.user);
       router.push("/dashboard");
     } catch (reason) { setError(reason instanceof Error?reason.message:"Unable to continue"); }
     finally { setLoading(false); }
+  }
+  async function continueAsGuest(){
+    setLoading(true);setError("");
+    try{const result=await api<{token:string;user:unknown}>("/auth/guest",{method:"POST"});saveSession(result.token,result.user);router.push("/dashboard");}
+    catch(reason){setError(reason instanceof Error?reason.message:"Unable to start guest mode");}
+    finally{setLoading(false);}
   }
 
   return <main className="auth-shell">
@@ -45,7 +51,7 @@ export default function AuthPage() {
         <h2>{mode==="login"?"Welcome back":"Start your learning path"}</h2>
         <p>{mode==="login"?"Continue exactly where you stopped.":"Tell us a little about you so Lumi can personalize the journey."}</p>
         <form onSubmit={submit}>
-          {mode==="register"&&<label>Full name<input name="fullName" required minLength={2} placeholder="Your name"/></label>}
+          {mode==="register"&&<><label>Full name<input name="fullName" required minLength={2} placeholder="Your name"/></label><label>Username<input name="username" required minLength={3} maxLength={32} pattern="[A-Za-z0-9_]+" placeholder="e.g. vijetha_codes"/><small>Friends can find you using this.</small></label></>}
           <label>Email address<input name="email" type="email" required placeholder="you@example.com"/></label>
           <label>Password<input name="password" type="password" required minLength={8} placeholder="At least 8 characters"/></label>
           {mode==="register"&&<>
@@ -55,6 +61,9 @@ export default function AuthPage() {
           {error&&<div className="auth-error">{error}</div>}
           <button className="auth-submit" disabled={loading}>{loading?"Please wait…":mode==="login"?"Sign in and continue":"Create my learning path"} <span>→</span></button>
         </form>
+        <div className="guest-divider"><span>or</span></div>
+        <button className="guest-button" type="button" onClick={continueAsGuest} disabled={loading}>Explore as a guest <span>→</span></button>
+        <small className="guest-note">Try courses, quizzes, Lumi, and roadmap puzzles now. Create an account later to keep everything permanently.</small>
         <small className="auth-note">Your progress, rewards, and certificates are securely saved to your account.</small>
       </div>
     </section>

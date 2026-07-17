@@ -23,6 +23,7 @@ function tokenFor(user: RowDataPacket) {
 router.post("/register", asyncRoute(async (request, response) => {
   const input = credentials.extend({
     fullName: z.string().min(2).max(120),
+    username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/).optional(),
     country: z.string().max(100).optional(),
     interests: z.array(z.number().int().positive()).max(9).default([]),
     experienceLevel: z.enum(["beginner", "intermediate", "advanced"]).default("beginner"),
@@ -33,8 +34,8 @@ router.post("/register", asyncRoute(async (request, response) => {
     if (existing.length) throw new ApiError(409, "An account with this email already exists");
     const hash = await bcrypt.hash(input.password, 12);
     const [created] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO users (full_name,email,password_hash,country) VALUES (?,?,?,?) RETURNING id",
-      [input.fullName, input.email.toLowerCase(), hash, input.country ?? null],
+      "INSERT INTO users (full_name,email,password_hash,country,username) VALUES (?,?,?,?,?) RETURNING id",
+      [input.fullName, input.email.toLowerCase(), hash, input.country ?? null, input.username ?? null],
     );
     const userId = created.insertId;
     await connection.execute(
@@ -47,9 +48,20 @@ router.post("/register", asyncRoute(async (request, response) => {
         [userId, interestId, index + 1],
       );
     }
-    return { id: userId, email: input.email.toLowerCase(), full_name: input.fullName, role: "learner" };
+    return { id: userId, email: input.email.toLowerCase(), full_name: input.fullName, username:input.username ?? null, role: "learner" };
   });
   response.status(201).json({ user: result, token: tokenFor(result as unknown as RowDataPacket) });
+}));
+
+router.post("/guest", asyncRoute(async (_request, response) => {
+  const stamp=Date.now().toString(36);const username=`guest_${stamp}`;const fullName=`Guest learner ${stamp.slice(-4).toUpperCase()}`;
+  const hash=await bcrypt.hash(`${stamp}:${Math.random()}`,12);
+  const result=await transaction(async(connection)=>{
+    const [created]=await connection.execute<ResultSetHeader>("INSERT INTO users (full_name,email,password_hash,username,is_guest) VALUES (?,?,?,?,TRUE) RETURNING id",[fullName,`${username}@guest.lumio.invalid`,hash,username]);
+    await connection.execute("INSERT INTO user_profiles (user_id,experience_level) VALUES (?,?)",[created.insertId,"beginner"]);
+    return {id:created.insertId,email:`${username}@guest.lumio.invalid`,full_name:fullName,username,role:"learner"};
+  });
+  response.status(201).json({user:result,token:tokenFor(result as unknown as RowDataPacket),guest:true});
 }));
 
 router.post("/login", asyncRoute(async (request, response) => {
@@ -73,7 +85,7 @@ router.post("/logout", authenticate, asyncRoute(async (request, response) => {
 
 router.get("/me", authenticate, asyncRoute(async (request, response) => {
   const users = await rows<RowDataPacket[]>(
-    `SELECT u.id,u.full_name,u.email,u.profile_picture_url,u.bio,u.phone_number,u.country,
+    `SELECT u.id,u.full_name,u.username,u.email,u.profile_picture_url,u.bio,u.phone_number,u.country,
       u.joined_at,u.last_login_at,u.account_status,u.role,p.experience_level,p.credits_balance,
       p.daily_streak,p.longest_streak
      FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE u.id=?`,

@@ -7,7 +7,7 @@ import { clearSession } from "../lib/api";
 const links=[
   ["/dashboard","⌂","Overview"],["/roadmap","🗺","My Roadmap"],["/courses","◫","Courses"],
   ["/presentations","▣","PPT Creator"],["/tutor","✦","Ask Lumi"],
-  ["/study-tools","◈","Study Hub"],["/certificates","◇","Certificates"],["/achievements","☆","Achievements"],["/profile","◎","Profile"],
+  ["/study-tools","◈","Study Hub"],["/friends","♧","Friends"],["/certificates","◇","Certificates"],["/achievements","☆","Achievements"],["/profile","◎","Profile"],
 ];
 
 export default function PortalNav(){

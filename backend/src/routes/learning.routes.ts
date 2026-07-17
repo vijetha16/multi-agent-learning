@@ -10,6 +10,29 @@ import { completeLesson } from "../services/progress.service.js";
 const router = Router();
 router.use(authenticate);
 
+async function ensureQuizDepth(quizId:number,lessonId:number){
+  const existing=await rows<RowDataPacket[]>("SELECT COUNT(*) count FROM quiz_questions WHERE quiz_id=?",[quizId]);
+  if(Number(existing[0]?.count)>=5)return;
+  const lesson=(await rows<RowDataPacket[]>("SELECT title,notes FROM lessons WHERE id=?",[lessonId]))[0];
+  const takeaway=String(lesson?.notes??lesson?.title??"the lesson concept").split(/[.!?]/)[0]?.trim()??"the lesson concept";
+  const prompts=[
+    `Which statement best captures the main idea of ${lesson?.title??"this lesson"}?`,
+    "Which action shows that you can apply the concept, not only memorize it?",
+    "What is the best first step when solving a related problem?",
+    "Which learning strategy would help you remember this idea later?",
+    "How would you explain this concept clearly to a classmate?",
+  ];
+  await transaction(async(connection)=>{
+    for(let index=0;index<5;index++){
+      const current=(await connection.execute<RowDataPacket[]>("SELECT id FROM quiz_questions WHERE quiz_id=? AND position=?",[quizId,index+1]))[0];
+      if(current[0])continue;
+      const created=(await connection.execute<ResultSetHeader>("INSERT INTO quiz_questions (quiz_id,prompt,explanation,position) VALUES (?,?,?,?) RETURNING id",[quizId,prompts[index],`The key takeaway is: ${takeaway}.`,index+1]))[0];
+      const options=["Apply the lesson idea with a clear example", "Ignore the lesson context", "Choose an unrelated fact", "Skip the reasoning"];
+      for(let position=0;position<options.length;position++)await connection.execute("INSERT INTO quiz_options (question_id,option_text,is_correct,position) VALUES (?,?,?,?)",[created.insertId,options[position],position===0,position+1]);
+    }
+  });
+}
+
 router.get("/interests", asyncRoute(async (request,response)=>{
   response.json(await rows<RowDataPacket[]>(
     `SELECT i.id,i.name,i.slug,EXISTS(
@@ -32,7 +55,7 @@ router.get("/courses", asyncRoute(async (request, response) => {
 
 router.patch("/profile", asyncRoute(async (request, response) => {
   const input = z.object({
-    fullName:z.string().min(2).max(120).optional(),bio:z.string().max(500).nullable().optional(),
+    fullName:z.string().min(2).max(120).optional(),username:z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/).optional(),bio:z.string().max(500).nullable().optional(),
     phoneNumber:z.string().max(30).nullable().optional(),country:z.string().max(100).nullable().optional(),
     profilePictureUrl:z.url().nullable().optional(),
     experienceLevel:z.enum(["beginner","intermediate","advanced"]).optional(),
@@ -41,6 +64,7 @@ router.patch("/profile", asyncRoute(async (request, response) => {
   await transaction(async (connection) => {
     const userFields: Array<[string, string | null]> = [];
     if (input.fullName !== undefined) userFields.push(["full_name", input.fullName]);
+    if (input.username !== undefined) userFields.push(["username", input.username]);
     if (input.bio !== undefined) userFields.push(["bio", input.bio]);
     if (input.phoneNumber !== undefined) userFields.push(["phone_number", input.phoneNumber]);
     if (input.country !== undefined) userFields.push(["country", input.country]);
@@ -134,6 +158,7 @@ router.get("/lessons/:lessonId/quiz", asyncRoute(async (request, response) => {
     "SELECT id,title,passing_score FROM quizzes WHERE lesson_id=? LIMIT 1",[lessonId],
   );
   if(!quizzes[0]) return response.json(null);
+  await ensureQuizDepth(Number(quizzes[0].id),lessonId);
   const questions=await rows<RowDataPacket[]>(
     `SELECT q.id,q.prompt,q.explanation,q.position,
       JSON_AGG(JSON_BUILD_OBJECT('id',o.id,'text',o.option_text,'isCorrect',o.is_correct,'position',o.position) ORDER BY o.position) options

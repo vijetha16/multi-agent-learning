@@ -11,6 +11,7 @@ import presentationRoutes from "./routes/presentation.routes.js";
 import docsRoutes from "./routes/docs.routes.js";
 import { requestLogger } from "./logger.js";
 import studentRoutes from "./routes/student.routes.js";
+import socialRoutes from "./routes/social.routes.js";
 import { errorHandler, notFound } from "./http.js";
 
 export const app = express();
@@ -29,5 +30,6 @@ app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/tutor", tutorRoutes);
 app.use("/api/v1/presentations", presentationRoutes);
 app.use("/api/v1/student", studentRoutes);
+app.use("/api/v1", socialRoutes);
 app.use(notFound);
 app.use(errorHandler);
