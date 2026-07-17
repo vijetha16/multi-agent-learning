@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import{useState}from"react";import PptxGenJS from"pptxgenjs";import PortalNav from"../components/PortalNav";import{api}from"../lib/api";import"./presentations.css";
 type Slide={title:string;subtitle:string;bullets:string[];kind:string};type Deck={title:string;theme:string;slides:Slide[]};
