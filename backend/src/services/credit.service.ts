@@ -1,4 +1,4 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, RowDataPacket } from "../database.js";
 import { ApiError } from "../http.js";
 import { recordActivity } from "./activity.service.js";
 

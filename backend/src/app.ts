@@ -12,7 +12,7 @@ import { errorHandler, notFound } from "./http.js";
 
 export const app = express();
 app.disable("x-powered-by");
-app.use(helmet());
+app.use((helmet as unknown as () => express.RequestHandler)());
 app.use(cors({ origin: config.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 

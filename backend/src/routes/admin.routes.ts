@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket } from "../database.js";
 import { execute, rows } from "../database.js";
 import { asyncRoute, authenticate, requireAdmin } from "../http.js";
 
@@ -40,7 +40,7 @@ router.post("/courses", asyncRoute(async (request, response) => {
   const result = await execute(
     `INSERT INTO courses
       (name,slug,description,difficulty,duration_minutes,credits_required,certificate_company,certificate_name,category_interest_id,is_published)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id`,
     [input.name,input.slug,input.description,input.difficulty,input.durationMinutes,input.creditsRequired,input.certificateCompany??null,input.certificateName??null,input.categoryInterestId??null,input.isPublished],
   );
   response.status(201).json({ id: result.insertId, ...input });
@@ -73,7 +73,7 @@ router.post("/courses/:courseId/levels", asyncRoute(async (request, response) =>
     xpReward:z.number().int().nonnegative().default(0),creditsReward:z.number().int().nonnegative().default(0),
   }).parse(request.body);
   const result = await execute(
-    "INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward) VALUES (?,?,?,?,?,?)",
+    "INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward) VALUES (?,?,?,?,?,?) RETURNING id",
     [courseId,input.levelNumber,input.title,input.description??null,input.xpReward,input.creditsReward],
   );
   await execute("UPDATE courses SET total_levels=(SELECT COUNT(*) FROM course_levels WHERE course_id=?) WHERE id=?", [courseId,courseId]);

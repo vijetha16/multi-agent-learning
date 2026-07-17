@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { ResultSetHeader, RowDataPacket } from "../database.js";
 import { execute, rows, transaction } from "../database.js";
 import { ApiError, asyncRoute, authenticate } from "../http.js";
 import { recordActivity } from "../services/activity.service.js";
@@ -71,7 +71,7 @@ router.post("/courses/:courseId/enroll", asyncRoute(async (request, response) =>
     const course = courses[0];
     if (!course) throw new ApiError(404, "Course not found");
     const [created] = await connection.execute<ResultSetHeader>(
-      "INSERT IGNORE INTO course_enrollments (user_id,course_id) VALUES (?,?)",
+      "INSERT INTO course_enrollments (user_id,course_id) VALUES (?,?) ON CONFLICT (user_id,course_id) DO NOTHING RETURNING id",
       [request.user!.id, courseId],
     );
     if (created.affectedRows && Number(course.credits_required) > 0) {
@@ -82,7 +82,7 @@ router.post("/courses/:courseId/enroll", asyncRoute(async (request, response) =>
     );
     if (firstLevel[0]) {
       await connection.execute(
-        "INSERT IGNORE INTO user_level_progress (user_id,level_id,status) VALUES (?,?,'unlocked')",
+        "INSERT INTO user_level_progress (user_id,level_id,status) VALUES (?,?,'unlocked') ON CONFLICT (user_id,level_id) DO NOTHING",
         [request.user!.id, firstLevel[0].id],
       );
     }
@@ -136,7 +136,7 @@ router.get("/lessons/:lessonId/quiz", asyncRoute(async (request, response) => {
   if(!quizzes[0]) return response.json(null);
   const questions=await rows<RowDataPacket[]>(
     `SELECT q.id,q.prompt,q.explanation,q.position,
-      JSON_ARRAYAGG(JSON_OBJECT('id',o.id,'text',o.option_text,'isCorrect',o.is_correct,'position',o.position)) options
+      JSON_AGG(JSON_BUILD_OBJECT('id',o.id,'text',o.option_text,'isCorrect',o.is_correct,'position',o.position) ORDER BY o.position) options
      FROM quiz_questions q JOIN quiz_options o ON o.question_id=q.id
      WHERE q.quiz_id=? GROUP BY q.id ORDER BY q.position`,[quizzes[0].id],
   );
@@ -170,7 +170,9 @@ router.post("/lessons/:lessonId/start", asyncRoute(async (request, response) => 
   await execute(
     `INSERT INTO user_lesson_progress (user_id,lesson_id,status,started_at)
      VALUES (?,?,'in_progress',NOW())
-     ON DUPLICATE KEY UPDATE status=IF(status='completed','completed','in_progress'),started_at=COALESCE(started_at,NOW())`,
+     ON CONFLICT (user_id,lesson_id) DO UPDATE SET
+       status=CASE WHEN user_lesson_progress.status='completed' THEN 'completed' ELSE 'in_progress' END,
+       started_at=COALESCE(user_lesson_progress.started_at,CURRENT_TIMESTAMP)`,
     [request.user!.id, lessonId],
   );
   await recordActivity(request.user!.id, "lesson_started", `Started lesson ${lessonId}`, request.ip, { lessonId });
@@ -196,7 +198,7 @@ router.post("/quizzes/:quizId/attempts", asyncRoute(async (request, response) =>
     const quiz=quizzes[0]; if(!quiz) throw new ApiError(404,"Quiz not found");
     const passed=input.score>=Number(quiz.passing_score);
     const [attempt]=await connection.execute<ResultSetHeader>(
-      "INSERT INTO quiz_attempts (user_id,quiz_id,score,passed,answers_json) VALUES (?,?,?,?,?)",
+      "INSERT INTO quiz_attempts (user_id,quiz_id,score,passed,answers_json) VALUES (?,?,?,?,?) RETURNING id",
       [request.user!.id,quizId,input.score,passed,input.answers?JSON.stringify(input.answers):null],
     );
     if(passed) await applyCredits(connection,request.user!.id,15,"quiz_complete",`quiz:${request.user!.id}:${quizId}:${attempt.insertId}`,"quiz",quizId);
@@ -271,7 +273,8 @@ router.post("/certificates/:courseId/generate", asyncRoute(async (request, respo
       `INSERT INTO certificates
         (user_id,course_id,certificate_number,company_name,certificate_name,status,issued_at)
        VALUES (?,?,?,?,?,'issued',NOW())
-       ON DUPLICATE KEY UPDATE status='issued',issued_at=COALESCE(issued_at,NOW())`,
+       ON CONFLICT (user_id,course_id) DO UPDATE SET
+         status='issued',issued_at=COALESCE(certificates.issued_at,CURRENT_TIMESTAMP)`,
       [request.user!.id, courseId, number, course.certificate_company ?? "Lumio", course.certificate_name ?? course.name],
     );
     await recordActivity(request.user!.id, "certificate_generated", `Generated certificate for ${course.name}`, request.ip, { courseId, number }, connection);

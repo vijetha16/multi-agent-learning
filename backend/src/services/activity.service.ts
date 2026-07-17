@@ -1,5 +1,4 @@
-import type { PoolConnection } from "mysql2/promise";
-import { execute } from "../database.js";
+import { execute, type PoolConnection } from "../database.js";
 
 export type ActivityType =
   | "login" | "logout" | "lesson_started" | "lesson_completed" | "quiz_attempted"

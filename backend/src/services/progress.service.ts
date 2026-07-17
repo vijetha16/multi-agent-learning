@@ -1,5 +1,4 @@
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { transaction } from "../database.js";
+import { transaction, type RowDataPacket } from "../database.js";
 import { ApiError } from "../http.js";
 import { recordActivity } from "./activity.service.js";
 import { applyCredits } from "./credit.service.js";
@@ -31,9 +30,9 @@ export async function completeLesson(userId: number, lessonId: number, timeSpent
       `INSERT INTO user_lesson_progress
         (user_id, lesson_id, status, completion_percent, time_spent_seconds, started_at, completed_at)
        VALUES (?, ?, 'completed', 100, ?, NOW(), NOW())
-       ON DUPLICATE KEY UPDATE status='completed', completion_percent=100,
-         time_spent_seconds=time_spent_seconds+VALUES(time_spent_seconds),
-         completed_at=COALESCE(completed_at, NOW())`,
+       ON CONFLICT (user_id,lesson_id) DO UPDATE SET status='completed', completion_percent=100,
+         time_spent_seconds=user_lesson_progress.time_spent_seconds+EXCLUDED.time_spent_seconds,
+         completed_at=COALESCE(user_lesson_progress.completed_at,CURRENT_TIMESTAMP)`,
       [userId, lessonId, Math.max(0, timeSpentSeconds)],
     );
 
@@ -59,9 +58,9 @@ export async function completeLesson(userId: number, lessonId: number, timeSpent
       `INSERT INTO user_level_progress
         (user_id, level_id, status, completion_percent, stars, started_at, completed_at)
        VALUES (?, ?, ?, ?, ?, NOW(), ?)
-       ON DUPLICATE KEY UPDATE status=VALUES(status), completion_percent=VALUES(completion_percent),
-         stars=GREATEST(stars, VALUES(stars)), started_at=COALESCE(started_at, NOW()),
-         completed_at=COALESCE(completed_at, VALUES(completed_at))`,
+       ON CONFLICT (user_id,level_id) DO UPDATE SET status=EXCLUDED.status, completion_percent=EXCLUDED.completion_percent,
+         stars=GREATEST(user_level_progress.stars,EXCLUDED.stars), started_at=COALESCE(user_level_progress.started_at,CURRENT_TIMESTAMP),
+         completed_at=COALESCE(user_level_progress.completed_at,EXCLUDED.completed_at)`,
       [userId, lesson.level_id, levelCompleted ? "completed" : "in_progress", percent, levelCompleted ? 3 : 0, levelCompleted ? new Date() : null],
     );
 
@@ -75,7 +74,8 @@ export async function completeLesson(userId: number, lessonId: number, timeSpent
         await connection.execute(
           `INSERT INTO user_level_progress (user_id, level_id, status, completion_percent)
            VALUES (?, ?, 'unlocked', 0)
-           ON DUPLICATE KEY UPDATE status=IF(status='locked','unlocked',status)`,
+           ON CONFLICT (user_id,level_id) DO UPDATE SET
+             status=CASE WHEN user_level_progress.status='locked' THEN 'unlocked' ELSE user_level_progress.status END`,
           [userId, next[0].id],
         );
       } else {

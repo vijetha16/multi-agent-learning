@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { z } from "zod";
-import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { ResultSetHeader, RowDataPacket } from "../database.js";
 import { config } from "../config.js";
 import { rows, transaction } from "../database.js";
 import { ApiError, asyncRoute, authenticate } from "../http.js";
@@ -33,7 +33,7 @@ router.post("/register", asyncRoute(async (request, response) => {
     if (existing.length) throw new ApiError(409, "An account with this email already exists");
     const hash = await bcrypt.hash(input.password, 12);
     const [created] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO users (full_name,email,password_hash,country) VALUES (?,?,?,?)",
+      "INSERT INTO users (full_name,email,password_hash,country) VALUES (?,?,?,?) RETURNING id",
       [input.fullName, input.email.toLowerCase(), hash, input.country ?? null],
     );
     const userId = created.insertId;
@@ -43,7 +43,7 @@ router.post("/register", asyncRoute(async (request, response) => {
     );
     for (const [index, interestId] of input.interests.entries()) {
       await connection.execute(
-        "INSERT IGNORE INTO user_interests (user_id,interest_id,priority) VALUES (?,?,?)",
+        "INSERT INTO user_interests (user_id,interest_id,priority) VALUES (?,?,?) ON CONFLICT (user_id,interest_id) DO NOTHING",
         [userId, interestId, index + 1],
       );
     }

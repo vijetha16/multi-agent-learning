@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket } from "../database.js";
 import { rows } from "../database.js";
 import { asyncRoute, authenticate } from "../http.js";
 
