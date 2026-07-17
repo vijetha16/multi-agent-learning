@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import learningRoutes from "./routes/learning.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import tutorRoutes from "./routes/tutor.routes.js";
 import { errorHandler, notFound } from "./http.js";
 
 export const app = express();
@@ -19,5 +20,6 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1", learningRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/tutor", tutorRoutes);
 app.use(notFound);
 app.use(errorHandler);

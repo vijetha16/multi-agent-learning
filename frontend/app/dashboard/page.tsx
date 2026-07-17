@@ -64,7 +64,7 @@ export default function Dashboard() {
   return <main className="dash-shell">
     <aside className="sidebar">
       <Link className="dash-brand" href="/"><span>L</span><b>Lumio</b></Link>
-      <nav><Link className="selected" href="/dashboard"><i>⌂</i> Overview</Link><a href="#roadmap"><i>⌁</i> My Roadmap</a><Link href="/courses"><i>◫</i> Explore Courses</Link><Link href="/certificates"><i>◇</i> Certificates</Link><Link href="/achievements"><i>☆</i> Achievements</Link></nav>
+      <nav><Link className="selected" href="/dashboard"><i>⌂</i> Overview</Link><a href="#roadmap"><i>⌁</i> My Roadmap</a><Link href="/courses"><i>◫</i> Explore Courses</Link><Link href="/tutor"><i>✦</i> Ask Lumi</Link><Link href="/certificates"><i>◇</i> Certificates</Link><Link href="/achievements"><i>☆</i> Achievements</Link></nav>
       <div className="sidebar-bottom"><Link href="/profile"><i>◎</i> Edit profile</Link><button className="signout" onClick={signOut}>↙ Sign out</button><div className="user-chip"><span>{firstName[0]}</span><div><b>{user?.full_name}</b><small>Level {active?.level_number??completed} learner</small></div></div></div>
     </aside>
 

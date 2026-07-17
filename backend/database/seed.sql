@@ -4,7 +4,7 @@ INSERT INTO interests (name, slug) VALUES
 ('Artificial Intelligence','artificial-intelligence'),('Machine Learning','machine-learning'),
 ('Cyber Security','cyber-security'),('Web Development','web-development'),('Cloud','cloud'),
 ('Data Science','data-science'),('UI/UX','ui-ux'),('Game Development','game-development'),
-('Blockchain','blockchain')
+('Blockchain','blockchain'),('Programming','programming')
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 INSERT INTO badges (name,description,criteria_json) VALUES
@@ -25,15 +25,19 @@ ON DUPLICATE KEY UPDATE description=VALUES(description),is_published=TRUE;
 INSERT INTO courses
 (name,slug,description,difficulty,duration_minutes,total_levels,credits_required,certificate_company,certificate_name,category_interest_id,is_published)
 VALUES
-('Cyber Security Defender','cyber-security-defender','Protect systems through threat awareness, secure design, ethical testing, and incident response.','beginner',135,3,0,'SecureFuture Labs','Cyber Security Defender Certificate',(SELECT id FROM interests WHERE slug='cyber-security'),TRUE),
+('Cyber Security Defender','cyber-security-defender','Protect systems through threat awareness, secure design, ethical testing, and incident response.','beginner',135,3,120,'SecureFuture Labs','Cyber Security Defender Certificate',(SELECT id FROM interests WHERE slug='cyber-security'),TRUE),
 ('Modern Web Development','modern-web-development','Build responsive, accessible web applications with HTML, CSS, JavaScript, React, and APIs.','beginner',150,3,0,'WebCraft Academy','Modern Web Developer Certificate',(SELECT id FROM interests WHERE slug='web-development'),TRUE),
-('Cloud Engineering','cloud-engineering','Understand cloud architecture, deployment, reliability, observability, and cost-aware scaling.','intermediate',145,3,0,'CloudNova','Cloud Engineering Foundations',(SELECT id FROM interests WHERE slug='cloud'),TRUE),
+('Cloud Engineering','cloud-engineering','Understand cloud architecture, deployment, reliability, observability, and cost-aware scaling.','intermediate',145,3,150,'CloudNova','Cloud Engineering Foundations',(SELECT id FROM interests WHERE slug='cloud'),TRUE),
 ('Data Science Explorer','data-science-explorer','Turn raw data into trustworthy insight using analysis, visualization, statistics, and experimentation.','beginner',140,3,0,'DataWorks Institute','Data Science Explorer Certificate',(SELECT id FROM interests WHERE slug='data-science'),TRUE),
 ('UI/UX Product Design','ui-ux-product-design','Research user needs, shape intuitive flows, prototype interfaces, and validate product experiences.','beginner',125,3,0,'DesignForward','UI/UX Product Designer Certificate',(SELECT id FROM interests WHERE slug='ui-ux'),TRUE),
 ('Game Development Studio','game-development-studio','Learn game loops, player feedback, level design, mechanics, and iterative playtesting.','beginner',155,3,0,'PlayForge Studio','Game Development Foundations',(SELECT id FROM interests WHERE slug='game-development'),TRUE),
-('Blockchain Essentials','blockchain-essentials','Explore distributed ledgers, consensus, smart contracts, wallets, and responsible Web3 design.','intermediate',130,3,0,'ChainLab','Blockchain Essentials Certificate',(SELECT id FROM interests WHERE slug='blockchain'),TRUE),
-('Applied Machine Learning','applied-machine-learning','Create practical prediction systems with feature engineering, evaluation, iteration, and deployment.','intermediate',165,3,0,'FutureSkills Academy','Applied Machine Learning Certificate',(SELECT id FROM interests WHERE slug='machine-learning'),TRUE)
-ON DUPLICATE KEY UPDATE description=VALUES(description),is_published=TRUE,total_levels=VALUES(total_levels);
+('Blockchain Essentials','blockchain-essentials','Explore distributed ledgers, consensus, smart contracts, wallets, and responsible Web3 design.','intermediate',130,3,200,'ChainLab','Blockchain Essentials Certificate',(SELECT id FROM interests WHERE slug='blockchain'),TRUE),
+('Applied Machine Learning','applied-machine-learning','Create practical prediction systems with feature engineering, evaluation, iteration, and deployment.','intermediate',165,3,180,'FutureSkills Academy','Applied Machine Learning Certificate',(SELECT id FROM interests WHERE slug='machine-learning'),TRUE),
+('Python Developer Path','python-developer-path','Learn Python from variables and control flow through functions, data structures, APIs, and a practical capstone.','beginner',240,6,0,'Python Learning Institute','Certified Python Developer Foundations',(SELECT id FROM interests WHERE slug='programming'),TRUE),
+('Java Developer Path','java-developer-path','Master Java syntax, object-oriented design, collections, exceptions, testing, and a complete application.','beginner',260,6,0,'Java Skills Network','Certified Java Developer Foundations',(SELECT id FROM interests WHERE slug='programming'),TRUE),
+('Python AI Automation','python-ai-automation','Use advanced Python to automate workflows, integrate APIs, process data, and build AI-powered tools.','advanced',190,4,250,'AutomationWorks','Python AI Automation Specialist',(SELECT id FROM interests WHERE slug='programming'),TRUE),
+('Java Spring Backend','java-spring-backend','Build production-style Java services with Spring Boot, REST APIs, persistence, testing, and security.','advanced',210,4,300,'Enterprise Java Guild','Spring Backend Developer Certificate',(SELECT id FROM interests WHERE slug='programming'),TRUE)
+ON DUPLICATE KEY UPDATE description=VALUES(description),is_published=TRUE,total_levels=VALUES(total_levels),credits_required=VALUES(credits_required);
 
 SET @course_id=(SELECT id FROM courses WHERE slug='ai-machine-learning');
 INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward) VALUES
@@ -126,6 +130,23 @@ SELECT c.id,n.level_number,
 FROM courses c CROSS JOIN (SELECT 1 level_number UNION ALL SELECT 2 UNION ALL SELECT 3) n
 WHERE c.slug<>'ai-machine-learning'
 ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),credits_reward=VALUES(credits_reward);
+
+INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward) VALUES
+((SELECT id FROM courses WHERE slug='python-developer-path'),1,'Python Basics','Variables, data types, input, output, and expressions.',100,20),
+((SELECT id FROM courses WHERE slug='python-developer-path'),2,'Decisions & Loops','Control program flow with conditions and iteration.',140,30),
+((SELECT id FROM courses WHERE slug='python-developer-path'),3,'Functions & Modules','Write reusable functions and organize Python code.',180,40),
+((SELECT id FROM courses WHERE slug='python-developer-path'),4,'Python Data Structures','Work confidently with lists, dictionaries, sets, and tuples.',220,50),
+((SELECT id FROM courses WHERE slug='python-developer-path'),5,'APIs & Files','Read files, handle data, and connect to web APIs.',270,60),
+((SELECT id FROM courses WHERE slug='python-developer-path'),6,'Python Capstone','Combine the full path into a portfolio-ready application.',350,100),
+((SELECT id FROM courses WHERE slug='java-developer-path'),1,'Java Foundations','Syntax, variables, operators, and the Java runtime.',100,20),
+((SELECT id FROM courses WHERE slug='java-developer-path'),2,'Control Flow','Use conditions, loops, methods, and arrays.',140,30),
+((SELECT id FROM courses WHERE slug='java-developer-path'),3,'Object-Oriented Java','Design classes with encapsulation, inheritance, and interfaces.',180,40),
+((SELECT id FROM courses WHERE slug='java-developer-path'),4,'Collections & Exceptions','Build reliable programs with collections and error handling.',220,50),
+((SELECT id FROM courses WHERE slug='java-developer-path'),5,'Testing & Persistence','Test Java code and store application data.',270,60),
+((SELECT id FROM courses WHERE slug='java-developer-path'),6,'Java Capstone','Create and present a complete Java application.',350,100),
+((SELECT id FROM courses WHERE slug='python-ai-automation'),4,'Automation Capstone','Deliver an AI-assisted automation with monitoring and safeguards.',360,120),
+((SELECT id FROM courses WHERE slug='java-spring-backend'),4,'Spring Service Capstone','Ship a secure, tested, database-backed Spring service.',360,120)
+ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),xp_reward=VALUES(xp_reward),credits_reward=VALUES(credits_reward);
 
 INSERT INTO lessons (course_id,level_id,lesson_number,title,description,notes,estimated_minutes,credits_reward)
 SELECT cl.course_id,cl.id,cl.level_number*10+1,

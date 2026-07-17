@@ -238,7 +238,7 @@ router.get("/achievements", asyncRoute(async (request,response)=>{
 
 router.get("/certificates", asyncRoute(async (request, response) => {
   response.json(await rows<RowDataPacket[]>(
-    `SELECT cert.*,c.name course_name,c.completion_requirement,
+    `SELECT cert.*,c.id course_id,c.name course_name,c.certificate_company,c.certificate_name,c.completion_requirement,
       COALESCE(ROUND(100*SUM(CASE WHEN ulp.status='completed' THEN 1 ELSE 0 END)/NULLIF(COUNT(cl.id),0)),0) progress
      FROM courses c
      LEFT JOIN course_levels cl ON cl.course_id=c.id

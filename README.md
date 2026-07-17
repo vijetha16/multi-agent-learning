@@ -170,3 +170,16 @@ Both production builds pass:
 cd backend && pnpm build
 cd frontend && pnpm build
 ```
+
+## Personalized paths and AI tutor
+
+- Python and Java each have six sequential roadmap levels. Later levels remain
+  locked until the learner completes the current level.
+- Completing levels awards credits. Learners can spend those credits to unlock
+  advanced Python, Java, AI, cloud, security, and other favorite courses.
+- `/tutor` lets learners ask Lumi general, Python, or Java questions and receive
+  a direct answer, analogy, code example, visual concept flow, and follow-ups.
+- `POST /api/v1/tutor/ask` returns a structured explanation, while
+  `GET /api/v1/tutor/history` returns recent tutor activity.
+- The catalog and certificate center display the certificate name and issuing
+  organization for every course.
