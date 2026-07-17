@@ -10,6 +10,14 @@ import { completeLesson } from "../services/progress.service.js";
 const router = Router();
 router.use(authenticate);
 
+router.get("/interests", asyncRoute(async (request,response)=>{
+  response.json(await rows<RowDataPacket[]>(
+    `SELECT i.id,i.name,i.slug,EXISTS(
+      SELECT 1 FROM user_interests ui WHERE ui.user_id=? AND ui.interest_id=i.id
+    ) selected FROM interests i ORDER BY i.name`,[request.user!.id],
+  ));
+}));
+
 router.get("/courses", asyncRoute(async (request, response) => {
   const courses = await rows<RowDataPacket[]>(
     `SELECT c.*, i.name category,
@@ -66,8 +74,7 @@ router.post("/courses/:courseId/enroll", asyncRoute(async (request, response) =>
       "INSERT IGNORE INTO course_enrollments (user_id,course_id) VALUES (?,?)",
       [request.user!.id, courseId],
     );
-    if (!created.affectedRows) throw new ApiError(409, "Already enrolled");
-    if (Number(course.credits_required) > 0) {
+    if (created.affectedRows && Number(course.credits_required) > 0) {
       await applyCredits(connection, request.user!.id, -Number(course.credits_required), "course_unlock", `unlock:${request.user!.id}:${courseId}`, "course", courseId);
     }
     const [firstLevel] = await connection.execute<RowDataPacket[]>(
@@ -80,8 +87,8 @@ router.post("/courses/:courseId/enroll", asyncRoute(async (request, response) =>
       );
     }
     await connection.execute("UPDATE user_profiles SET current_learning_path_id=? WHERE user_id=?", [courseId, request.user!.id]);
-    await recordActivity(request.user!.id, "course_enrolled", `Enrolled in ${course.name}`, request.ip, { courseId }, connection);
-    return { enrolled: true, courseId };
+    if(created.affectedRows) await recordActivity(request.user!.id, "course_enrolled", `Enrolled in ${course.name}`, request.ip, { courseId }, connection);
+    return { enrolled: true, selected: true, courseId };
   });
   response.status(201).json(result);
 }));

@@ -22,6 +22,19 @@ SELECT 'AI & Machine Learning','ai-machine-learning',
 FROM interests WHERE slug='artificial-intelligence'
 ON DUPLICATE KEY UPDATE description=VALUES(description),is_published=TRUE;
 
+INSERT INTO courses
+(name,slug,description,difficulty,duration_minutes,total_levels,credits_required,certificate_company,certificate_name,category_interest_id,is_published)
+VALUES
+('Cyber Security Defender','cyber-security-defender','Protect systems through threat awareness, secure design, ethical testing, and incident response.','beginner',135,3,0,'SecureFuture Labs','Cyber Security Defender Certificate',(SELECT id FROM interests WHERE slug='cyber-security'),TRUE),
+('Modern Web Development','modern-web-development','Build responsive, accessible web applications with HTML, CSS, JavaScript, React, and APIs.','beginner',150,3,0,'WebCraft Academy','Modern Web Developer Certificate',(SELECT id FROM interests WHERE slug='web-development'),TRUE),
+('Cloud Engineering','cloud-engineering','Understand cloud architecture, deployment, reliability, observability, and cost-aware scaling.','intermediate',145,3,0,'CloudNova','Cloud Engineering Foundations',(SELECT id FROM interests WHERE slug='cloud'),TRUE),
+('Data Science Explorer','data-science-explorer','Turn raw data into trustworthy insight using analysis, visualization, statistics, and experimentation.','beginner',140,3,0,'DataWorks Institute','Data Science Explorer Certificate',(SELECT id FROM interests WHERE slug='data-science'),TRUE),
+('UI/UX Product Design','ui-ux-product-design','Research user needs, shape intuitive flows, prototype interfaces, and validate product experiences.','beginner',125,3,0,'DesignForward','UI/UX Product Designer Certificate',(SELECT id FROM interests WHERE slug='ui-ux'),TRUE),
+('Game Development Studio','game-development-studio','Learn game loops, player feedback, level design, mechanics, and iterative playtesting.','beginner',155,3,0,'PlayForge Studio','Game Development Foundations',(SELECT id FROM interests WHERE slug='game-development'),TRUE),
+('Blockchain Essentials','blockchain-essentials','Explore distributed ledgers, consensus, smart contracts, wallets, and responsible Web3 design.','intermediate',130,3,0,'ChainLab','Blockchain Essentials Certificate',(SELECT id FROM interests WHERE slug='blockchain'),TRUE),
+('Applied Machine Learning','applied-machine-learning','Create practical prediction systems with feature engineering, evaluation, iteration, and deployment.','intermediate',165,3,0,'FutureSkills Academy','Applied Machine Learning Certificate',(SELECT id FROM interests WHERE slug='machine-learning'),TRUE)
+ON DUPLICATE KEY UPDATE description=VALUES(description),is_published=TRUE,total_levels=VALUES(total_levels);
+
 SET @course_id=(SELECT id FROM courses WHERE slug='ai-machine-learning');
 INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward) VALUES
 (@course_id,1,'Foundations of AI','Understand intelligence, agents, and real-world AI.',100,25),
@@ -104,3 +117,23 @@ FROM (
   WHERE l.course_id=@course_id
 ) options_seed
 ON DUPLICATE KEY UPDATE option_text=VALUES(option_text),is_correct=VALUES(is_correct);
+
+INSERT INTO course_levels (course_id,level_number,title,description,xp_reward,credits_reward)
+SELECT c.id,n.level_number,
+  CASE n.level_number WHEN 1 THEN CONCAT(c.name,' Essentials') WHEN 2 THEN CONCAT('Applied ',c.name) ELSE CONCAT(c.name,' Capstone') END,
+  CASE n.level_number WHEN 1 THEN 'Build the core mental models and vocabulary.' WHEN 2 THEN 'Practice the skills through guided real-world scenarios.' ELSE 'Combine your skills in a portfolio-ready challenge.' END,
+  n.level_number*120,n.level_number*30
+FROM courses c CROSS JOIN (SELECT 1 level_number UNION ALL SELECT 2 UNION ALL SELECT 3) n
+WHERE c.slug<>'ai-machine-learning'
+ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),credits_reward=VALUES(credits_reward);
+
+INSERT INTO lessons (course_id,level_id,lesson_number,title,description,notes,estimated_minutes,credits_reward)
+SELECT cl.course_id,cl.id,cl.level_number*10+1,
+  CASE cl.level_number WHEN 1 THEN CONCAT('Start with ',c.name) WHEN 2 THEN CONCAT(c.name,' in Practice') ELSE CONCAT('Build Your ',c.name,' Project') END,
+  cl.description,
+  CONCAT('This guided lesson introduces ',c.name,' through concrete examples and active practice. You will identify the most important concepts, connect them to a real-world situation, make a small design decision, and reflect on what evidence would show that your solution works.'),
+  CASE cl.level_number WHEN 1 THEN 20 WHEN 2 THEN 28 ELSE 35 END,
+  cl.level_number*15
+FROM course_levels cl JOIN courses c ON c.id=cl.course_id
+WHERE c.slug<>'ai-machine-learning'
+ON DUPLICATE KEY UPDATE title=VALUES(title),description=VALUES(description),notes=VALUES(notes);
