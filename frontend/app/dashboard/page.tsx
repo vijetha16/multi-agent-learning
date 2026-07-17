@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, clearSession, getToken } from "../lib/api";
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [readNotifications,setReadNotifications]=useState<string[]>([]);
   const [remindersEnabled,setRemindersEnabled]=useState(true);
+  const notificationRef=useRef<HTMLDivElement>(null);
 
   const load=useCallback(async()=>{
     if(!getToken()){router.replace("/auth");return;}
@@ -55,6 +56,19 @@ export default function Dashboard() {
       setRemindersEnabled(localStorage.getItem("lumio_reminders_enabled")!=="false");
     }catch{/* Keep safe defaults when device storage is unavailable. */}
   },[]);
+  useEffect(()=>{
+    if(!notificationsOpen)return;
+    function closeOnOutsideClick(event:MouseEvent){
+      if(notificationRef.current&&!notificationRef.current.contains(event.target as Node))setNotificationsOpen(false);
+    }
+    function closeOnEscape(event:KeyboardEvent){if(event.key==="Escape")setNotificationsOpen(false)}
+    document.addEventListener("mousedown",closeOnOutsideClick);
+    document.addEventListener("keydown",closeOnEscape);
+    return()=>{
+      document.removeEventListener("mousedown",closeOnOutsideClick);
+      document.removeEventListener("keydown",closeOnEscape);
+    };
+  },[notificationsOpen]);
 
   function openLevel(level:Level){
     if(level.status==="locked")return;
@@ -96,10 +110,7 @@ export default function Dashboard() {
     </aside>
 
     <section className="dash-main" id="overview">
-      <header className="dash-top"><div><small>YOUR PERSONAL LEARNING SPACE</small><h1>Welcome back, {firstName} <span>👋</span></h1><p>Lumi saved your progress. Continue from exactly where you stopped.</p></div><div className="top-actions"><button aria-label="Notifications">♧<b/></button><div className="credit-pill">✦ <span>{dashboard.summary.credits??0}</span> credits</div></div></header>
-      {error&&<div className="dash-alert">{error}<button onClick={()=>setError("")}>×</button></div>}
-      <button className="notification-floating" aria-label={`Notifications, ${unreadCount} unread`} aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(value=>!value)}>♧{unreadCount>0&&<b>{unreadCount}</b>}</button>
-      {notificationsOpen&&<div className="notification-panel" role="dialog" aria-label="Notifications">
+      <header className="dash-top"><div className="welcome-copy"><small>YOUR PERSONAL LEARNING SPACE</small><h1>Welcome back, {firstName} <span>👋</span></h1><p>Lumi saved your progress. Continue from exactly where you stopped.</p></div><div className="top-actions"><div className="notification-control" ref={notificationRef}><button type="button" className="notification-button" aria-label={`Open notifications, ${unreadCount} unread`} aria-expanded={notificationsOpen} aria-controls="notification-panel" onClick={()=>setNotificationsOpen(value=>!value)}>♧{unreadCount>0&&<b>{unreadCount>9?"9+":unreadCount}</b>}</button>{notificationsOpen&&<div className="notification-panel" id="notification-panel" role="dialog" aria-label="Notifications">
         <div className="notification-head"><div><small>LEARNING UPDATES</small><h2>Notifications</h2></div><button onClick={markAllRead} disabled={!unreadCount}>Mark all read</button></div>
         <div className="reminder-setting"><span>⏰</span><div><b>Weekly study reminders</b><small>Get a gentle nudge to maintain your progress.</small></div><button className={remindersEnabled?"on":""} role="switch" aria-checked={remindersEnabled} onClick={toggleReminders}><i/></button></div>
         <div className="notification-list">{notifications.map(item=><article className={readNotifications.includes(item.id)?"read":""} key={item.id} onClick={()=>markRead(item.id)}>
@@ -108,7 +119,8 @@ export default function Dashboard() {
           {!readNotifications.includes(item.id)&&<i className="unread-dot"/>}
         </article>)}</div>
         <div className="notification-foot">Updates are personalized from your courses and progress.</div>
-      </div>}
+      </div>}</div><button type="button" className="credit-pill" aria-label={`View credit balance: ${dashboard.summary.credits??0} credits`}>✦ <span>{dashboard.summary.credits??0}</span> credits</button></div></header>
+      {error&&<div className="dash-alert">{error}<button onClick={()=>setError("")}>×</button></div>}
       <div className="stats-grid">
         <article><span className="stat-icon violet">⌁</span><div><small>CURRENT LEVEL</small><b>{levels.length?`Level ${active?.level_number??levels.length}`:"Choose a path"}</b><em>{dashboard.currentCourse?.name??"All categories available"}</em></div></article>
         <article><span className="stat-icon amber">⚡</span><div><small>LEARNING STREAK</small><b>{dashboard.summary.streak??0} days</b><em className="up">Keep it going!</em></div></article>
